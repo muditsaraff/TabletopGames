@@ -4,6 +4,7 @@ import core.AbstractGameState;
 import core.AbstractPlayer;
 import core.actions.AbstractAction;
 import core.interfaces.IStateHeuristic;
+import players.simple.RandomPlayer;
 
 import java.util.List;
 import java.util.Random;
@@ -59,6 +60,11 @@ public class BasicMCTSPlayer extends AbstractPlayer {
 
     public void setStateHeuristic(IStateHeuristic heuristic) {
         getParameters().heuristic = heuristic;
+    }
+
+    public AbstractAction getRolloutAction(AbstractGameState state, List<AbstractAction> actions,
+                                           RandomPlayer randomPlayer) {
+        return randomPlayer.getAction(state, actions);
     }
 
 

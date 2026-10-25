@@ -131,17 +131,21 @@ public class RunGames implements IGameRunner {
                 AbstractParameters params = config.get(gameParams).equals("") ? null :
                         AbstractParameters.createFromFile(gameType, (String) config.get(gameParams));
 
-                RoundRobinTournament tournament = new RoundRobinTournament(agents, gameType, playerCount, params, config);
-
                 // Add listeners
                 String outputDir = (String) config.get(destDir);
+                if ((boolean) config.get(addTimeStamp))
+                    outputDir = new File(outputDir, timeDir).getPath();
+                Map<RunArg, Object> tournamentConfig = new HashMap<>(config);
+                tournamentConfig.put(destDir, outputDir);
+
+                RoundRobinTournament tournament = new RoundRobinTournament(
+                        agents, gameType, playerCount, params, tournamentConfig);
+
                 List<String> directories = new ArrayList<>(Arrays.asList(outputDir.split(Pattern.quote(File.separator))));
                 if (gamesAndPlayerCounts.size() > 1)
                     directories.add(gameName);
                 if (gamesAndPlayerCounts.get(gameType).length > 1)
                     directories.add(playersDir);
-                if ((boolean) config.get(addTimeStamp))
-                    directories.add(timeDir);
 
                 //noinspection unchecked
                 for (String listenerClass : ((List<String>) config.get(listener))) {
