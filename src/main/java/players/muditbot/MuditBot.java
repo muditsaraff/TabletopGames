@@ -34,8 +34,6 @@ public class MuditBot extends BasicMCTSPlayer {
     public MuditBot(long seed) {
         super(seed);
         BasicMCTSParams params = getParameters();
-        // Keep the search within a short per-decision budget while extending rollouts
-        // far enough to estimate the value of the current Sushi Go round.
         params.setParameterValue("budgetType", PlayerConstants.BUDGET_TIME);
         params.setParameterValue("budget", 50);
         params.setParameterValue("rolloutLength", 100);
@@ -74,8 +72,6 @@ public class MuditBot extends BasicMCTSPlayer {
         }
 
         SGParameters parameters = (SGParameters) state.getGameParameters();
-        // The baseline bot uses full-deck frequencies. The card-picking variant can
-        // instead condition its estimates on public cards and hands known to this player.
         CardAvailability availability = useFullDeckAvailability
                 ? new CardAvailability(parameters)
                 : estimateAvailability(state, playerId);
@@ -85,8 +81,6 @@ public class MuditBot extends BasicMCTSPlayer {
         double[] projectedScores = new double[nPlayers];
 
         for (int player = 0; player < nPlayers; player++) {
-            // Choices are made simultaneously, so account for cards already chosen
-            // this turn as well as future picks from each player's remaining hand.
             remainingPicks[player] = Math.max(0,
                     state.getPlayerHands().get(player).getSize() - state.getCardChoices().get(player).size());
             counts.add(getEffectiveCounts(state, player));
@@ -100,8 +94,6 @@ public class MuditBot extends BasicMCTSPlayer {
 
         addExpectedMakiPoints(state, parameters, counts, remainingPicks, projectedScores, availability);
 
-        // Convert projected score differences into bounded win-probability estimates;
-        // uncertainty grows with the number of picks and rounds left to play.
         double uncertainty = 5.0 + Math.max(0, parameters.nRounds - state.getRoundCounter() - 1) * 3.0;
         for (int picks : remainingPicks) {
             uncertainty += picks * 0.15;
@@ -181,8 +173,6 @@ public class MuditBot extends BasicMCTSPlayer {
         if (remainingPicks == 0) {
             return 0.0;
         }
-        // Discount raw deck probabilities to reflect that not every remaining card
-        // will reach this player or be worth selecting.
         double tempuraProbability = availability.probability(Tempura) * 0.65;
         double sashimiProbability = availability.probability(Sashimi) * 0.65;
         double dumplingProbability = availability.probability(Dumpling) * 0.75;
@@ -235,8 +225,6 @@ public class MuditBot extends BasicMCTSPlayer {
                                                 CardAvailability availability,
                                                 int additionalPuddings) {
         double puddingProbability = availability.probability(Pudding);
-        // Puddings persist between rounds, unlike most cards, so include a rough
-        // estimate of future-round opportunities when projecting the final standings.
         double expectedFutureCards = Math.max(0, parameters.nRounds - state.getRoundCounter() - 1)
                 * Math.max(0, parameters.nCards - state.getNPlayers() + 2);
         double[] projectedCounts = new double[state.getNPlayers()];
@@ -282,8 +270,6 @@ public class MuditBot extends BasicMCTSPlayer {
                                               int[] remainingPicks,
                                               double[] projectedScores,
                                               CardAvailability availability) {
-        // Maki scores depend on relative icon totals, so project each player's count
-        // before awarding expected first- and second-place points.
         double iconsPerCard = expectedMakiIconsPerCard(availability);
         double[] projectedMaki = new double[state.getNPlayers()];
         for (int player = 0; player < state.getNPlayers(); player++) {
@@ -391,8 +377,6 @@ public class MuditBot extends BasicMCTSPlayer {
         }
 
         SGParameters parameters = (SGParameters) state.getGameParameters();
-        // Rollouts choose for every simulated player, but availability is estimated
-        // from the controlled bot's observation rather than omniscient hidden hands.
         int observerId = getPlayerID();
         if (observerId < 0 || observerId >= state.getNPlayers()) {
             observerId = state.getCurrentPlayer();
@@ -425,8 +409,6 @@ public class MuditBot extends BasicMCTSPlayer {
         double probabilitySashimi = availability.probability(Sashimi) * 0.5;
         double nigiriProbability = availability.probability(EggNigiri)
                 + availability.probability(SalmonNigiri) + availability.probability(SquidNigiri);
-        // Estimate the marginal value of this pick: combinations get value for
-        // completing them, while single-card points are scored immediately.
         return switch (card.type) {
             case EggNigiri -> parameters.valueEggNigiri
                     * (counts.get(Wasabi) > 0 ? parameters.multiplierWasabi : 1);
@@ -520,8 +502,6 @@ public class MuditBot extends BasicMCTSPlayer {
             SGParameters parameters = (SGParameters) state.getGameParameters();
             initializeDeck(parameters);
 
-            // Played cards are public. Only subtract hand contents when the game state
-            // says they are visible to the observer; unknown hands must not leak information.
             for (int player = 0; player < state.getNPlayers(); player++) {
                 for (SGCard.SGCardType type : SGCard.SGCardType.values()) {
                     if (type != Maki) {
