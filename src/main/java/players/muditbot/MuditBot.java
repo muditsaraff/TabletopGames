@@ -56,7 +56,7 @@ public class MuditBot extends BasicMCTSPlayer {
         setName("MuditBot");
     }
 
-    static double evaluateState(AbstractGameState gameState, int playerId) {
+    public static double evaluateState(AbstractGameState gameState, int playerId) {
         return evaluateDraftState(gameState, playerId, true);
     }
 
