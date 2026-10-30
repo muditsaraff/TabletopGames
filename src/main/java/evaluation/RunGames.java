@@ -45,6 +45,21 @@ public class RunGames implements IGameRunner {
     private List<File> agentFiles;
     private String timeDir;
 
+    public RunGames() {
+    }
+
+    public RunGames(Map<RunArg, Object> config, List<? extends AbstractPlayer> agents) {
+        this.config = new HashMap<>(config);
+        this.agents = new LinkedList<>(agents);
+        this.agentFiles = new ArrayList<>();
+        this.timeDir = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss").format(new Date());
+        initialiseGamesAndPlayerCount();
+        if (!this.config.get(RunArg.gameParams).equals("")
+                && this.gamesAndPlayerCounts.keySet().size() > 1) {
+            throw new IllegalArgumentException("Cannot yet provide a gameParams argument if running multiple games");
+        }
+    }
+
     /**
      * Main function, creates and runs the tournament with the given settings and players.
      */
@@ -121,31 +136,20 @@ public class RunGames implements IGameRunner {
     public void run() {
         // Now we loop over each game and player count combination
         for (GameType gameType : gamesAndPlayerCounts.keySet()) {
-            String gameName = gameType.name();
-            //     timeDir.insert(0, gameName + "_");
-
             for (int playerCount : gamesAndPlayerCounts.get(gameType)) {
-                System.out.printf("Game: %s, Players: %d\n", gameName, playerCount);
-                String playersDir = playerCount + "-players";
+                System.out.printf("Game: %s, Players: %d\n", gameType.name(), playerCount);
 
                 AbstractParameters params = config.get(gameParams).equals("") ? null :
                         AbstractParameters.createFromFile(gameType, (String) config.get(gameParams));
 
                 // Add listeners
-                String outputDir = (String) config.get(destDir);
-                if ((boolean) config.get(addTimeStamp))
-                    outputDir = new File(outputDir, timeDir).getPath();
+                List<String> directories = outputDirectories(gameType, playerCount);
+                String outputDir = String.join(File.separator, directories);
                 Map<RunArg, Object> tournamentConfig = new HashMap<>(config);
                 tournamentConfig.put(destDir, outputDir);
 
                 RoundRobinTournament tournament = new RoundRobinTournament(
                         agents, gameType, playerCount, params, tournamentConfig);
-
-                List<String> directories = new ArrayList<>(Arrays.asList(outputDir.split(Pattern.quote(File.separator))));
-                if (gamesAndPlayerCounts.size() > 1)
-                    directories.add(gameName);
-                if (gamesAndPlayerCounts.get(gameType).length > 1)
-                    directories.add(playersDir);
 
                 //noinspection unchecked
                 for (String listenerClass : ((List<String>) config.get(listener))) {
@@ -168,6 +172,20 @@ public class RunGames implements IGameRunner {
                 }
             }
         }
+    }
+
+    protected List<String> outputDirectories(GameType gameType, int playerCount) {
+        String outputDir = (String) config.get(destDir);
+        if ((boolean) config.get(addTimeStamp))
+            outputDir = new File(outputDir, timeDir).getPath();
+
+        List<String> directories = new ArrayList<>(
+                Arrays.asList(outputDir.split(Pattern.quote(File.separator))));
+        if (gamesAndPlayerCounts.size() > 1)
+            directories.add(gameType.name());
+        if (gamesAndPlayerCounts.get(gameType).length > 1)
+            directories.add(playerCount + "-players");
+        return directories;
     }
 
     private void initialiseGamesAndPlayerCount() {
